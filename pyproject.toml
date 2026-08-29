@@ -11,10 +11,11 @@ dependencies = [
     "fastapi>=0.141.1",
     "requests>=2.34.2",
     "typer>=0.27.2",
+    "uvicorn>=0.52.4",
 ]
 
 [project.scripts]
-anchor-tasking-management-cli = "anchor_tasking_management_cli:main"
+anchor = "anchor_tasking_management_cli.anchor:app"
 
 [build-system]
 requires = ["uv_build>=0.12.6,<0.13.0"]
