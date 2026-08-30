@@ -22,3 +22,14 @@ def add(task_param:AddTask):
 @app.get("/list")
 def list_tasks():
     return task_list
+
+class CheckTask(BaseModel):
+    task_name:str
+
+@app.post("/check")
+def check_task(task_param:CheckTask):
+    for t in task_list:
+        if t.name == task_param.task_name:
+            t.done = True
+            return "Task checked succesfully"
+    return "Task not found"
