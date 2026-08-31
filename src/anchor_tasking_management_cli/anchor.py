@@ -1,6 +1,7 @@
 import typer
 import requests
 from typing import Optional
+from rich.prompt import Prompt, IntPrompt, Confirm
 
 app = typer.Typer()
 SERVER_URL = "http://localhost:8000"
@@ -20,10 +21,22 @@ def add(name:str, description:Optional[str] = None, deadline:Optional[str] = Non
 		typer.echo(f"Couldn't establish connection with server")
 
 @app.command("list")
-def list_tasks(simple:bool = False):
+def list_tasks(simple:bool = False, sort:Optional[str] = False):
 	try:
 		response = requests.get(SERVER_URL+"/list")
 		response_list = response.json()
+		if sort == "priority":
+			new_list = []
+			prior_list = []
+			for t in response_list:
+				prior_list.append(t.get("priority"))
+			for x in range(len(prior_list)):
+				min_prior = max(prior_list)
+				index = prior_list.index(min_prior)
+				prior_list.remove(min_prior)
+				new_list.append(response_list[index])
+				response_list.pop(index)
+			response_list = new_list
 		if simple:
 			out = ""
 			for t in response_list:
@@ -44,9 +57,9 @@ def list_tasks(simple:bool = False):
 		typer.echo(f"Server error: \n{e}")
 
 @app.command("check")
-def check_task(task):
+def check_task(task, uncheck:Optional[bool] = False):
 	try:
-		response = requests.post(SERVER_URL+"/check", json={"task_name":task})
+		response = requests.post(SERVER_URL+"/check", json={"task_name":task,"uncheck":uncheck})
 		typer.echo(response.json())
 	except requests.exceptions.ConnectionError:
 		typer.echo("Couldn't establish connection with server")
@@ -92,6 +105,34 @@ def delete(task_name):
 	try:
 		response = requests.post(SERVER_URL+"/del", json={"task_name":task_name})
 		typer.echo(response.json())
+	except requests.exceptions.ConnectionError:
+		typer.echo("Couldn't establish connection with server")
+	except requests.exceptions.HTTPError as e:
+		typer.echo(f"Server error: \n{e}")
+	except Exception as e:
+		typer.echo(e)
+
+@app.command("edit")
+def edit_task(task_name):
+	try:
+		response = requests.get(SERVER_URL+"/list")
+		task_list = response.json()
+		for t in task_list:
+			if t.get("name").lower() == task_name.lower():
+				current = t
+		if current:
+			description = Prompt.ask("Description", default=current.get("description") or "")
+			deadline = Prompt.ask("Deadline (YYYY-MM-DD)", default=current.get("deadline") or "")
+			priority = IntPrompt.ask("Priority", default=current.get("priority", 1))
+			typer.echo(f"\nSummary:\n  Description: {description}\n  Deadline: {deadline}\n  Priority: {priority}")
+			if Confirm.ask("¿Confirm changes?"):
+				response = requests.post(SERVER_URL+"/edit", json={
+					"task_name":task_name,
+					"priority":priority,
+					"deadline":deadline,
+					"description":description
+				})
+				typer.echo(response.json())
 	except requests.exceptions.ConnectionError:
 		typer.echo("Couldn't establish connection with server")
 	except requests.exceptions.HTTPError as e:

@@ -25,15 +25,24 @@ def list_tasks():
 
 class CheckTask(BaseModel):
     task_name:str
+    uncheck:bool
 
 @app.post("/check")
 def check_task(task_param:CheckTask):
     for t in task_list:
         if t.name.lower() == task_param.task_name.lower():
             if t.done:
-                return "Task was already completed"
-            t.done = True
-            return "Task checked succesfully"
+                if not task_param.uncheck:
+                    return "Task was already completed"
+                else:
+                    t.done = False
+                    return "Task check reverted"
+            else:
+                if task_param.uncheck:
+                    return "Task wasn't completed"
+                else:
+                    t.done = True
+                return "Task checked succesfully"
     return "Task not found"
 
 class DelTask(BaseModel):
@@ -49,4 +58,20 @@ def del_task(task_param:DelTask):
         if t.name.lower() == task_param.task_name.lower():
             task_list.pop(i)
             return "Task removed with succes"
+    return "Task not found"
+
+class EditTask(BaseModel):
+    task_name:str
+    deadline:str
+    priority:int
+    description:str
+
+@app.post("/edit")
+def edit_task(task_param:EditTask):
+    for i, t in enumerate(task_list):
+        if t.name.lower() == task_param.task_name.lower():
+            t.description = task_param.description
+            t.deadline = task_param.deadline
+            t.priority = task_param.priority
+            return "Task eddited with succes"
     return "Task not found"
