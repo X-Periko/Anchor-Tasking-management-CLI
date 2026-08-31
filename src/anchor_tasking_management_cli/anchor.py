@@ -21,7 +21,7 @@ def add(name:str, description:Optional[str] = None, deadline:Optional[str] = Non
 		typer.echo(f"Couldn't establish connection with server")
 
 @app.command("list")
-def list_tasks(simple:bool = False, sort:Optional[str] = False):
+def list_tasks(simple:bool = False, sort:Optional[str] = False, pending:Optional[bool] = False, done:Optional[bool] = False):
 	try:
 		response = requests.get(SERVER_URL+"/list")
 		response_list = response.json()
@@ -37,6 +37,13 @@ def list_tasks(simple:bool = False, sort:Optional[str] = False):
 				new_list.append(response_list[index])
 				response_list.pop(index)
 			response_list = new_list
+		if pending:
+			response_list = [t for t in response_list if not t.get("done")]
+		if done:
+			response_list = [t for t in response_list if t.get("done")]
+		if pending and done:
+			typer.echo("Can't use --pending and --done flags in same command")
+			return True
 		if simple:
 			out = ""
 			for t in response_list:
