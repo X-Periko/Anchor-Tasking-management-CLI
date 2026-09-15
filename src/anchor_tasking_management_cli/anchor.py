@@ -2,30 +2,29 @@ import typer
 import requests
 from typing import Optional
 from rich.prompt import Prompt, IntPrompt, Confirm
+from . import session
 
 app = typer.Typer()
 SERVER_URL = "http://localhost:8000"
-USR_DATA = None
-USER_INITIATED = False
 
 @app.command("init")
-def init_anchor():
+def init_anchor(restore:Optional[bool] = False):
+	if restore:
+		session.restore_session()
 	nick = Prompt.ask("Enter your name")
 	mail = Prompt.ask("Enter your email")
 	password = Prompt.ask("Enter your password", password=True)
-	global USR_DATA 
-	global USER_INITIATED
 	USR_DATA = {
 		"nick": nick,
 		"mail": mail,
 		"password": password
 	}
-	USER_INITIATED = True
+	session.save_session(data=USR_DATA)
 	typer.echo(USR_DATA)
 
 @app.command("add")
 def add(name:str, description:Optional[str] = None, deadline:Optional[str] = None, priority:int = 1):
-	if USER_INITIATED == True:
+	if session.load_session() is not None:
 		try:
 			response = requests.post(SERVER_URL + "/add", json={
 				"name":name.title(),
@@ -42,7 +41,7 @@ def add(name:str, description:Optional[str] = None, deadline:Optional[str] = Non
 
 @app.command("list")
 def list_tasks(simple:bool = False, sort:Optional[str] = False, pending:Optional[bool] = False, done:Optional[bool] = False):
-	if USER_INITIATED:
+	if session.load_session() is not None:
 		try:
 			response = requests.get(SERVER_URL+"/list")
 			response_list = response.json()
@@ -88,7 +87,7 @@ def list_tasks(simple:bool = False, sort:Optional[str] = False, pending:Optional
 
 @app.command("check")
 def check_task(task, uncheck:Optional[bool] = False):
-	if USER_INITIATED:
+	if session.load_session() is not None:
 		try:
 			response = requests.post(SERVER_URL+"/check", json={"task_name":task,"uncheck":uncheck})
 			typer.echo(response.json())
@@ -112,7 +111,7 @@ def progress_bar(done: int, total: int, width: int = 20) -> str:
 
 @app.command("status")
 def status():
-	if USER_INITIATED:
+	if session.load_session() is not None:
 		try:
 			response = requests.get(SERVER_URL+"/list")
 			response_list = response.json()
@@ -138,7 +137,7 @@ def status():
 
 @app.command("rm")
 def delete(task_name):
-	if USER_INITIATED:
+	if session.load_session() is not None:
 		try:
 			response = requests.post(SERVER_URL+"/del", json={"task_name":task_name})
 			typer.echo(response.json())
@@ -153,7 +152,7 @@ def delete(task_name):
 
 @app.command("edit")
 def edit_task(task_name):
-	if USER_INITIATED:
+	if session.load_session() is not None:
 		try:
 			response = requests.get(SERVER_URL+"/list")
 			task_list = response.json()
