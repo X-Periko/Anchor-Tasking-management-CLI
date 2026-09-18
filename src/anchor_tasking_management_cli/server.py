@@ -34,14 +34,17 @@ class CheckTask(BaseModel):
 
 @app.post("/check")
 def check_task(task_param:CheckTask):
-    if task_param.task_id is str:
+    try:
+        id = int(task_param.task_id)
+    except:
         tasks_founded = database.find_tasks_by_name(task_param.task_id)
         if len(tasks_founded) == 0:
             return "No task was found with that name"
         elif len(tasks_founded) > 1:
             return "Various tasks where found with that name"
-        
-    return "Task not found"
+        id = tasks_founded[0].get("id")
+    database.set_done(id, done = not task_param.uncheck)  
+    return "Task checked succesfully"
 
 class DelTask(BaseModel):
     task_name:str
@@ -68,10 +71,14 @@ class EditTask(BaseModel):
 
 @app.post("/edit")
 def edit_task(task_param:EditTask):
-    for i, t in enumerate(task_list):
-        if t.name.lower() == task_param.task_name.lower():
-            t.description = task_param.description
-            t.deadline = task_param.deadline
-            t.priority = task_param.priority
-            return "Task eddited with succes"
-    return "Task not found"
+    try:
+        id = int(task_param.task_id)
+    except:
+        tasks_founded = database.find_tasks_by_name(task_param.task_name)
+        if len(tasks_founded) == 0:
+            return "No task was found with that name"
+        elif len(tasks_founded) > 1:
+            return "Various tasks where found with that name"
+        id = tasks_founded[0].get("id")
+    database.edit_task(id, description=task_param.description, deadline=task_param.deadline, priority=task_param.priority)
+    return "Task eddited with succes"

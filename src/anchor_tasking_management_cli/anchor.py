@@ -17,6 +17,8 @@ def session_exists() -> bool:
 def init_anchor(restore:Optional[bool] = False):
 	if restore:
 		session.restore_session()
+		typer.echo("Session restored")
+		return True
 	nick = Prompt.ask("Enter your name")
 	mail = Prompt.ask("Enter your email")
 	password = Prompt.ask("Enter your password", password=True)
@@ -95,7 +97,7 @@ def list_tasks(simple:bool = False, sort:Optional[str] = False, pending:Optional
 def check_task(task, uncheck:Optional[bool] = False):
 	if session_exists():
 		try:
-			response = requests.post(SERVER_URL+"/check", json={"task_name":task,"uncheck":uncheck})
+			response = requests.post(SERVER_URL+"/check", json={"task_id":str(task),"uncheck":uncheck})
 			typer.echo(response.json())
 		except requests.exceptions.ConnectionError:
 			typer.echo("Couldn't establish connection with server")
