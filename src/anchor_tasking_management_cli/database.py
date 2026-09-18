@@ -64,8 +64,10 @@ def edit_task(task_id, description, deadline, priority):
             (description, deadline, priority, task_id)
         )
 
-def delete_task(task_id):
+def delete_task(task_id, all:bool = False):
     with connect() as conn:
+        if all: 
+            conn.execute("DELETE FROM tasks")
         conn.execute("DELETE FROM tasks WHERE id = ?", (task_id,))
 
 def find_tasks_by_name(name):

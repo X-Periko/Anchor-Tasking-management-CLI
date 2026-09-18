@@ -12,5 +12,8 @@ def restore_session():
         json.dump("", f)
 
 def load_session():
-    with open(FILE_PATH, "r") as f:
-        return json.load(f)
+    try:
+        with open(FILE_PATH, "r") as f:
+            return json.load(f)
+    except FileNotFoundError as e:
+        return e

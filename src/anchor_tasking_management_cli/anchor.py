@@ -7,6 +7,12 @@ from . import session
 app = typer.Typer()
 SERVER_URL = "http://localhost:8000"
 
+def session_exists() -> bool:
+	if session.load_session() not in [None, FileNotFoundError]:
+		return True
+	else:
+		return False
+
 @app.command("init")
 def init_anchor(restore:Optional[bool] = False):
 	if restore:
@@ -24,7 +30,7 @@ def init_anchor(restore:Optional[bool] = False):
 
 @app.command("add")
 def add(name:str, description:Optional[str] = None, deadline:Optional[str] = None, priority:int = 1):
-	if session.load_session() is not None:
+	if session_exists():
 		try:
 			response = requests.post(SERVER_URL + "/add", json={
 				"name":name.title(),
@@ -37,11 +43,11 @@ def add(name:str, description:Optional[str] = None, deadline:Optional[str] = Non
 		except:
 			typer.echo(f"Couldn't establish connection with server")
 	else:
-		typer.echo("Run anchor init to complete your authentication before using the sistem")
+		typer.echo("Run anchor init to complete your authentication before using the system")
 
 @app.command("list")
 def list_tasks(simple:bool = False, sort:Optional[str] = False, pending:Optional[bool] = False, done:Optional[bool] = False):
-	if session.load_session() is not None:
+	if session_exists():
 		try:
 			response = requests.get(SERVER_URL+"/list")
 			response_list = response.json()
@@ -83,11 +89,11 @@ def list_tasks(simple:bool = False, sort:Optional[str] = False, pending:Optional
 		except requests.exceptions.HTTPError as e:
 			typer.echo(f"Server error: \n{e}")
 	else:
-		typer.echo("Run anchor init to complete your authentication before using the sistem")
+		typer.echo("Run anchor init to complete your authentication before using the system")
 
 @app.command("check")
 def check_task(task, uncheck:Optional[bool] = False):
-	if session.load_session() is not None:
+	if session_exists():
 		try:
 			response = requests.post(SERVER_URL+"/check", json={"task_name":task,"uncheck":uncheck})
 			typer.echo(response.json())
@@ -98,7 +104,7 @@ def check_task(task, uncheck:Optional[bool] = False):
 		except Exception as e:
 			typer.echo(e)
 	else:
-		typer.echo("Run anchor init to complete your authentication before using the sistem")
+		typer.echo("Run anchor init to complete your authentication before using the system")
 
 def progress_bar(done: int, total: int, width: int = 20) -> str:
     if total == 0:
@@ -111,7 +117,7 @@ def progress_bar(done: int, total: int, width: int = 20) -> str:
 
 @app.command("status")
 def status():
-	if session.load_session() is not None:
+	if session_exists():
 		try:
 			response = requests.get(SERVER_URL+"/list")
 			response_list = response.json()
@@ -133,11 +139,11 @@ def status():
 		except Exception as e:
 			typer.echo(e)
 	else:
-		typer.echo("Run anchor init to complete your authentication before using the sistem")
+		typer.echo("Run anchor init to complete your authentication before using the system")
 
 @app.command("rm")
 def delete(task_name):
-	if session.load_session() is not None:
+	if session_exists():
 		try:
 			response = requests.post(SERVER_URL+"/del", json={"task_name":task_name})
 			typer.echo(response.json())
@@ -148,11 +154,11 @@ def delete(task_name):
 		except Exception as e:
 			typer.echo(e)
 	else:
-		typer.echo("Run anchor init to complete your authentication before using the sistem")
+		typer.echo("Run anchor init to complete your authentication before using the system")
 
 @app.command("edit")
 def edit_task(task_name):
-	if session.load_session() is not None:
+	if session_exists():
 		try:
 			response = requests.get(SERVER_URL+"/list")
 			task_list = response.json()
@@ -179,7 +185,7 @@ def edit_task(task_name):
 		except Exception as e:
 			typer.echo(e)
 	else:
-		typer.echo("Run anchor init to complete your authentication before using the sistem")
+		typer.echo("Run anchor init to complete your authentication before using the system")
 
 if __name__ == "__main__":
 	app()
