@@ -82,7 +82,7 @@ def list_tasks(simple:bool = False, sort:Optional[str] = False, pending:Optional
 					typer.echo("Task list empty. Good job!")
 				else:
 					for t in response_list:
-						typer.echo(f"-> {"☑" if t.get("done") else "☐"} {t.get("name")}")
+						typer.echo(f"-> {"☑" if t.get("done") else "☐"}   {t.get("id")}: {t.get("name")}")
 						typer.echo(f"	· Description: {t.get("description") if t.get("description") != None else "No description was added"}")
 						typer.echo(f"	· Deadline: {t.get("deadline") if t.get("deadline") != None else "No deadline was added"}")
 						typer.echo(f"	· Priority: {t.get("priority")}")
