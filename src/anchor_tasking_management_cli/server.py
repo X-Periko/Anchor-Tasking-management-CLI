@@ -54,12 +54,15 @@ def del_task(task_param:DelTask):
     if task_param.task_name == ".":
         database.delete_task(1, all=True)
         return "All tasks have been removed"
-    id = database.find_tasks_by_name(task_param.task_name)
-    if len(id) > 1:
-        return "More than one task was found with that name. Refer to the task by its id"
-    if len(id) == 0:
-        return "No task was found with that name"
-    id = id[0].get("id")
+    try:
+        id = int(task_param.task_name)
+    except:
+        id = database.find_tasks_by_name(task_param.task_name)
+        if len(id) > 1:
+            return "More than one task was found with that name. Refer to the task by its id"
+        if len(id) == 0:
+            return "No task was found with that name"
+        id = id[0].get("id")
     database.delete_task(id)
     return "Task removed with succes"
 
