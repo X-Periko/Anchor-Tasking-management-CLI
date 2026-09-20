@@ -34,16 +34,18 @@ def init_anchor(restore:Optional[bool] = False):
 	typer.echo(USR_DATA)
 
 @app.command("add")
-def add(name:str, description:Optional[str] = None, deadline:Optional[str] = None, priority:int = 1):
+def add(name:str):
 	if session_exists():
 		try:
+			description = Prompt.ask("Description", default="No description was added")
+			deadline = Prompt.ask("Deadline (YYYY-MM-DD)", default="No deadline was added")
+			priority = IntPrompt.ask("Priority", default=1)
 			response = requests.post(SERVER_URL + "/add", json={
 				"name":name.title(),
 				"description":description,
 				"deadline":deadline,
 				"priority":priority
 			})
-			typer.echo(f"Status: {response.status_code}")
 			typer.echo(response.json())
 		except:
 			typer.echo(f"Couldn't establish connection with server")
@@ -84,7 +86,7 @@ def list_tasks(simple:bool = False, sort:Optional[str] = False, pending:Optional
 				if simple:
 					out = ""
 					for t in response_list:
-						out += f"- {t.get("name")}\n"
+						out += f"- {"☑" if t.get("done") else "☐"} {t.get("name")}\n\n"
 					typer.echo(f"{out if out != "" else "Task list empty. Good job!"}")
 				else:
 					if response_list == []:
@@ -114,11 +116,26 @@ def list_tasks(simple:bool = False, sort:Optional[str] = False, pending:Optional
 	else:
 		typer.echo("Run anchor init to complete your authentication before using the system")
 
-@app.command("check")
-def check_task(task, uncheck:Optional[bool] = False):
+@app.command("rm")
+def delete(task_name):
 	if session_exists():
 		try:
-			response = requests.post(SERVER_URL+"/check", json={"task_id":str(task),"uncheck":uncheck})
+			response = requests.post(SERVER_URL+"/del", json={"task_name":task_name})
+			typer.echo(response.json())
+		except requests.exceptions.ConnectionError:
+			typer.echo("Couldn't establish connection with server")
+		except requests.exceptions.HTTPError as e:
+			typer.echo(f"Server error: \n{e}")
+		except Exception as e:
+			typer.echo(e)
+	else:
+		typer.echo("Run anchor init to complete your authentication before using the system")
+
+@app.command("check")
+def check_task(task, uncheck:Optional[bool] = False, rm:Optional[bool] = False):
+	if session_exists():
+		try:
+			response = requests.post(SERVER_URL+"/check", json={"task_id":str(task),"uncheck":uncheck, "rm":rm})
 			typer.echo(response.json())
 		except requests.exceptions.ConnectionError:
 			typer.echo("Couldn't establish connection with server")
@@ -155,21 +172,6 @@ def status():
 				typer.echo(f"{done} tasks completed out of {len(response_list)}") 
 				if done == len(response_list):
 					typer.echo("Congratulations. You have no tasks left!")
-		except requests.exceptions.ConnectionError:
-			typer.echo("Couldn't establish connection with server")
-		except requests.exceptions.HTTPError as e:
-			typer.echo(f"Server error: \n{e}")
-		except Exception as e:
-			typer.echo(e)
-	else:
-		typer.echo("Run anchor init to complete your authentication before using the system")
-
-@app.command("rm")
-def delete(task_name):
-	if session_exists():
-		try:
-			response = requests.post(SERVER_URL+"/del", json={"task_name":task_name})
-			typer.echo(response.json())
 		except requests.exceptions.ConnectionError:
 			typer.echo("Couldn't establish connection with server")
 		except requests.exceptions.HTTPError as e:

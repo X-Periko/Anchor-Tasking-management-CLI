@@ -31,6 +31,7 @@ def list_tasks():
 class CheckTask(BaseModel):
     task_id:str 
     uncheck:bool = False
+    rm:bool = False
 
 @app.post("/check")
 def check_task(task_param:CheckTask):
@@ -43,7 +44,9 @@ def check_task(task_param:CheckTask):
         elif len(tasks_founded) > 1:
             return "Various tasks where found with that name"
         id = tasks_founded[0].get("id")
-    database.set_done(id, done = not task_param.uncheck)  
+    database.set_done(id, done = not task_param.uncheck)
+    if task_param.rm:
+        database.delete_task(id)   
     return "Task checked succesfully"
 
 class DelTask(BaseModel):
