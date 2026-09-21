@@ -15,14 +15,25 @@ def connect():
     DB_DIR.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row  # permite acceder a las columnas por nombre: fila["nombre"]
+    conn.execute("PRAGMA foreign_keys = ON")
     return conn
 
 
 def create_table():
     with connect() as conn:
         conn.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                nick TEXT NOT NULL UNIQUE COLLATE NOCASE,
+                email TEXT NOT NULL UNIQUE COLLATE NOCASE,
+                password_hash TEXT NOT NULL,
+                created_at TEXT NOT NULL DEFAULT (datetime('now'))
+            )
+        """)
+        conn.execute("""
             CREATE TABLE IF NOT EXISTS tasks (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
                 name TEXT NOT NULL,
                 description TEXT,
                 deadline TEXT,
@@ -30,6 +41,34 @@ def create_table():
                 done INTEGER NOT NULL DEFAULT 0
             )
         """)
+
+#--------------------------USERS DB--------------------------
+
+def create_user(nick, email, password_hash):
+    with connect() as conn:
+        cursor = conn.execute(
+            "INSERT INTO users (nick, email, password_hash) VALUES (?, ?, ?)",
+            (nick, email, password_hash),
+        )
+        return cursor.lastrowid   # lanza sqlite3.IntegrityError si nick/email ya existen
+
+
+def get_user_by_email(email):
+    with connect() as conn:
+        row = conn.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
+        return dict(row) if row else None
+
+def get_user_by_nick(nick):
+    with connect() as conn:
+        row = conn.execute("SELECT * FROM users WHERE nick = ?", (nick,)).fetchone()
+        return dict(row) if row else None
+
+def get_user_by_id(user_id):
+    with connect() as conn:
+        row = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+        return dict(row) if row else None
+
+#--------------------------TASKS DB--------------------------
 
 def add_task(name, description=None, deadline=None, priority=1):
     with connect() as conn:

@@ -7,6 +7,8 @@ from typing import Optional
 from rich.prompt import Prompt, IntPrompt, Confirm
 from . import session
 
+token = "placeholder"
+
 app = typer.Typer()
 SERVER_URL = "http://localhost:8000"
 
@@ -45,7 +47,8 @@ def add(name:str):
 				"description":description,
 				"deadline":deadline,
 				"priority":priority
-			})
+			},
+			headers={"Authorization": f"Bearer {token}"})
 			typer.echo(response.json())
 		except:
 			typer.echo(f"Couldn't establish connection with server")

@@ -1,7 +1,7 @@
-from fastapi import FastAPI
+from fastapi import *
 from pydantic import BaseModel
 from typing import Optional
-from . import task, database
+from . import task, database, security
 
 app = FastAPI()
 
@@ -11,6 +11,36 @@ database.create_table()
 @app.get("/health")
 def health_check():
     return {"Status":"Server running"}
+
+class SignUp(BaseModel):
+    nick: str
+    mail: str
+    password: str
+    created_at: str
+
+@app.post("/signup")
+def signup(data:SignUp):
+    password_hash = security.hash_password(data.password)
+    database.create_user(data.nick, data.mail, password_hash)
+
+class Loing(BaseModel):
+    nick: Optional[str]
+    mail: Optional[str]
+    password: str
+
+@app.post("/login")
+def login(data:login):
+    found = database.get_user_by_nick(data.nick)
+    if len(found) == 0:
+        found = database.get_user_by_email(data.mail)
+    if len(found) == 0:
+        raise HTTPException(status_code=401, detail="Invalid nick or password")
+    account = found[0]
+    if security.verify_password(data.password, account.get("password_hash")):
+        return {"Succes":True,
+                "acces_token": security.create_access_token(account.get("id")),
+                "token_type": "bearer"
+                }
 
 class AddTask(BaseModel):
     name: str
