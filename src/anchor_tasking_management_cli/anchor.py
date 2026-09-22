@@ -7,23 +7,17 @@ from typing import Optional
 from rich.prompt import Prompt, IntPrompt, Confirm
 from . import session
 
-token = "placeholder"
-
 app = typer.Typer()
 SERVER_URL = "http://localhost:8000"
 
 def session_exists() -> bool:
-	if session.load_session() not in [None, FileNotFoundError]:
+	if session.load_session() != 101:
 		return True
 	else:
 		return False
 
-@app.command("init")
-def init_anchor(restore:Optional[bool] = False):
-	if restore:
-		session.restore_session()
-		typer.echo("Session restored")
-		return True
+@app.command("signup")
+def signup():
 	nick = Prompt.ask("Enter your name")
 	mail = Prompt.ask("Enter your email")
 	password = Prompt.ask("Enter your password", password=True)
@@ -32,8 +26,19 @@ def init_anchor(restore:Optional[bool] = False):
 		"mail": mail,
 		"password": password
 	}
-	session.save_session(data=USR_DATA)
-	typer.echo(USR_DATA)
+	response = requests.post(SERVER_URL + "/signup", json=USR_DATA)
+	typer.echo(response.json())
+
+@app.command("login")
+def	login():
+	name = Prompt.ask("Enter your email or nick")
+	password = Prompt.ask("Enter your password", password=True)
+	response = requests.post(SERVER_URL + "/login", json={
+		"name":name,
+		"password":password
+	})
+	session.save_session(data=response.json())
+	typer.echo("Login succesful")
 
 @app.command("add")
 def add(name:str):
@@ -48,7 +53,7 @@ def add(name:str):
 				"deadline":deadline,
 				"priority":priority
 			},
-			headers={"Authorization": f"Bearer {token}"})
+			headers={"Authorization": f"Bearer {session.load_session.get("acces_token")}"})
 			typer.echo(response.json())
 		except:
 			typer.echo(f"Couldn't establish connection with server")
@@ -65,7 +70,7 @@ def list_tasks(simple:bool = False, sort:Optional[str] = False, pending:Optional
 					stop_event.set()
 		def print_list():
 			try:
-				response = requests.get(SERVER_URL+"/list")
+				response = requests.get(SERVER_URL+"/list", headers={"Authorization": f"Bearer {session.load_session.get("acces_token")}"})
 				response_list = response.json()
 				if sort == "priority":
 					new_list = []
@@ -123,7 +128,7 @@ def list_tasks(simple:bool = False, sort:Optional[str] = False, pending:Optional
 def delete(task_name):
 	if session_exists():
 		try:
-			response = requests.post(SERVER_URL+"/del", json={"task_name":task_name})
+			response = requests.post(SERVER_URL+"/del", json={"task_name":task_name}, headers={"Authorization": f"Bearer {session.load_session.get("acces_token")}"})
 			typer.echo(response.json())
 		except requests.exceptions.ConnectionError:
 			typer.echo("Couldn't establish connection with server")
@@ -138,7 +143,7 @@ def delete(task_name):
 def check_task(task, uncheck:Optional[bool] = False, rm:Optional[bool] = False):
 	if session_exists():
 		try:
-			response = requests.post(SERVER_URL+"/check", json={"task_id":str(task),"uncheck":uncheck, "rm":rm})
+			response = requests.post(SERVER_URL+"/check", json={"task_id":str(task),"uncheck":uncheck, "rm":rm}, headers={"Authorization": f"Bearer {session.load_session.get("acces_token")}"})
 			typer.echo(response.json())
 		except requests.exceptions.ConnectionError:
 			typer.echo("Couldn't establish connection with server")
@@ -162,7 +167,7 @@ def progress_bar(done: int, total: int, width: int = 20) -> str:
 def status():
 	if session_exists():
 		try:
-			response = requests.get(SERVER_URL+"/list")
+			response = requests.get(SERVER_URL+"/list", headers={"Authorization": f"Bearer {session.load_session.get("acces_token")}"})
 			response_list = response.json()
 			done = 0
 			for t in response_list:
@@ -188,7 +193,7 @@ def status():
 def edit_task(task_name):
 	if session_exists():
 		try:
-			response = requests.get(SERVER_URL+"/list")
+			response = requests.get(SERVER_URL+"/list", headers={"Authorization": f"Bearer {session.load_session.get("acces_token")}"})
 			task_list = response.json()
 			for t in task_list:
 				if t.get("name").lower() == task_name.lower():
@@ -204,7 +209,8 @@ def edit_task(task_name):
 						"priority":priority,
 						"deadline":deadline,
 						"description":description
-					})
+					},
+					headers={"Authorization": f"Bearer {session.load_session.get("acces_token")}"})
 					typer.echo(response.json())
 		except requests.exceptions.ConnectionError:
 			typer.echo("Couldn't establish connection with server")

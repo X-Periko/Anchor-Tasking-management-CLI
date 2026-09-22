@@ -15,5 +15,5 @@ def load_session():
     try:
         with open(FILE_PATH, "r") as f:
             return json.load(f)
-    except FileNotFoundError as e:
-        return e
+    except:
+        return 101
