@@ -70,7 +70,7 @@ def get_user_by_id(user_id):
 
 #--------------------------TASKS DB--------------------------
 
-def add_task(name, description=None, deadline=None, priority=1):
+def add_task(name, user_id, description=None, deadline=None, priority=1):
     with connect() as conn:
         cursor = conn.execute(
             "INSERT INTO tasks (name, description, deadline, priority) VALUES (?, ?, ?, ?)",
@@ -79,31 +79,31 @@ def add_task(name, description=None, deadline=None, priority=1):
         return cursor.lastrowid
 
 
-def list_tasks():
+def list_tasks(user_id):
     with connect() as conn:
         rows = conn.execute("SELECT * FROM tasks").fetchall()
         return [dict(r) for r in rows]
 
 
-def get_task(task_id):
+def get_task(user_id, task_id):
     with connect() as conn:
         row = conn.execute("SELECT * FROM tasks WHERE id = ?", (task_id,)).fetchone()
         return dict(row) if row else None
 
 
-def set_done(task_id, done: bool):
+def set_done(user_id, task_id, done: bool):
     with connect() as conn:
         conn.execute("UPDATE tasks SET done = ? WHERE id = ?", (int(done), task_id))
 
 
-def edit_task(task_id, description, deadline, priority):
+def edit_task(user_id, task_id, description, deadline, priority):
     with connect() as conn:
         conn.execute(
             "UPDATE tasks SET description = ?, deadline = ?, priority = ? WHERE id = ?",
             (description, deadline, priority, task_id)
         )
 
-def delete_task(task_id, all:bool = False):
+def delete_task(user_id, task_id, all:bool = False):
     with connect() as conn:
         if all: 
             conn.execute("DELETE FROM tasks")

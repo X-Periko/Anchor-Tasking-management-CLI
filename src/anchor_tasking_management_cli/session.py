@@ -8,12 +8,13 @@ def save_session(data:dict):
         json.dump(data, f)
 
 def restore_session():
-    with open(FILE_PATH, "w") as f:
-        json.dump("", f)
+    if FILE_PATH.exists():
+        FILE_PATH.unlink()
 
 def load_session():
     try:
         with open(FILE_PATH, "r") as f:
-            return json.load(f)
+            data = json.load(f)
+            return data if isinstance(data, dict) else None
     except:
-        return 101
+        return None

@@ -4,6 +4,9 @@ from argon2.exceptions import VerifyMismatchError, InvalidHashError
 import os
 from datetime import datetime, timedelta, timezone
 import jwt
+from fastapi import Depends, HTTPException
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from . import database
 
 #------ Passwords ------
 _ph = PasswordHasher()
@@ -33,3 +36,19 @@ def decode_access_token(token: str) -> int | None:
         return int(payload["sub"])
     except (jwt.InvalidTokenError, KeyError, ValueError):
         return None
+
+_bearer_scheme = HTTPBearer()
+
+def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(_bearer_scheme),
+) -> dict:
+    user_id = decode_access_token(credentials.credentials)
+    if user_id is None:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+    user = database.get_user_by_id(user_id)
+    if user is None:
+        # el token es válido pero el usuario fue borrado después de emitirlo
+        raise HTTPException(status_code=401, detail="User no longer exists")
+
+    return user

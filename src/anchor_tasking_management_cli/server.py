@@ -54,13 +54,19 @@ class AddTask(BaseModel):
     priority: int = 1
 
 @app.post("/add")
-def add(task_param:AddTask):    
-    database.add_task(name=task_param.name, description=task_param.description, deadline=task_param.deadline, priority=task_param.priority)
+def add(task_param:AddTask, current_user: dict = Depends(security.get_current_user)):    
+    database.add_task(
+        name=task_param.name,
+        description=task_param.description,
+        deadline=task_param.deadline,
+        priority=task_param.priority,
+        user_id=current_user["id"]
+        )
     return "Task created succesfully"
 
 @app.get("/list")
 def list_tasks():
-    task_list = database.list_tasks()
+    task_list = database.list_tasks(user_id="placeholder")
     return task_list
 
 class CheckTask(BaseModel):
@@ -69,7 +75,7 @@ class CheckTask(BaseModel):
     rm:bool = False
 
 @app.post("/check")
-def check_task(task_param:CheckTask):
+def check_task(task_param:CheckTask, current_user: dict = Depends(security.get_current_user)):
     try:
         id = int(task_param.task_id)
     except:
@@ -81,16 +87,16 @@ def check_task(task_param:CheckTask):
         id = tasks_founded[0].get("id")
     database.set_done(id, done = not task_param.uncheck)
     if task_param.rm:
-        database.delete_task(id)   
+        database.delete_task(id, user_id=current_user["id"])   
     return "Task checked succesfully"
 
 class DelTask(BaseModel):
     task_name:str
 
 @app.post("/del")
-def del_task(task_param:DelTask):
+def del_task(task_param:DelTask, current_user: dict = Depends(security.get_current_user)):
     if task_param.task_name == ".":
-        database.delete_task(1, all=True)
+        database.delete_task(1, all=True, user_id=current_user["id"])
         return "All tasks have been removed"
     try:
         id = int(task_param.task_name)
@@ -111,7 +117,7 @@ class EditTask(BaseModel):
     description:str
 
 @app.post("/edit")
-def edit_task(task_param:EditTask):
+def edit_task(task_param:EditTask, current_user: dict = Depends(security.get_current_user)):
     try:
         id = int(task_param.task_id)
     except:
@@ -121,5 +127,9 @@ def edit_task(task_param:EditTask):
         elif len(tasks_founded) > 1:
             return "Various tasks where found with that name"
         id = tasks_founded[0].get("id")
-    database.edit_task(id, description=task_param.description, deadline=task_param.deadline, priority=task_param.priority)
+    database.edit_task(id,
+                       description=task_param.description,
+                       deadline=task_param.deadline,
+                       priority=task_param.priority,
+                       user_id=current_user["id"])
     return "Task eddited with succes"
