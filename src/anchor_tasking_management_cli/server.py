@@ -28,7 +28,7 @@ def signup(data:SignUp):
             return "\n\n[!] Nick or email already in use"
         return "\n\nAccount creation succes. Login with 'anchor login'."
     except:
-        raise HTTPException(status_code=403, details="Error in account iniciation")
+        raise HTTPException(status_code=403, detail="Error in account iniciation")
 
 class Login(BaseModel):
     name: Optional[str]
@@ -40,12 +40,16 @@ def login(data:Login):
     if not found:
         found = database.get_user_by_email(data.name)
     if not found:
-        return "Invalid nick or password"
+        raise HTTPException(401, detail="Invalid nick or password")
     if security.verify_password(data.password, found.get("password_hash")):
         return {"Succes":True,
                 "acces_token": security.create_access_token(found.get("id")),
                 "token_type": "bearer"
                 }
+    else: 
+        return {
+            "Succes": False,
+            "Details": "Invalid nick or password"}
 
 class AddTask(BaseModel):
     name: str
@@ -72,7 +76,6 @@ def list_tasks(current_user: dict = Depends(security.get_current_user)):
 class CheckTask(BaseModel):
     task_id:str 
     uncheck:bool = False
-    rm:bool = False
 
 @app.post("/check")
 def check_task(task_param:CheckTask, current_user: dict = Depends(security.get_current_user)):
@@ -81,15 +84,13 @@ def check_task(task_param:CheckTask, current_user: dict = Depends(security.get_c
         if database.get_task(user_id=current_user["id"], task_id=id) is None:
             return "No task was found with that name"
     except:
-        tasks_founded = database.find_tasks_by_name(task_param.task_id)
+        tasks_founded = database.find_tasks_by_name(user_id=current_user["id"], name=task_param.task_id)
         if len(tasks_founded) == 0:
             return "No task was found with that name"
         elif len(tasks_founded) > 1:
             return "Various tasks where found with that name"
         id = tasks_founded[0].get("id")
-    database.set_done(id, done = not task_param.uncheck)
-    if task_param.rm:
-        database.delete_task(id, user_id=current_user["id"])   
+    database.set_done(task_id=id, user_id=current_user["id"], done = not task_param.uncheck)
     return "Task checked succesfully"
 
 class DelTask(BaseModel):
@@ -98,18 +99,18 @@ class DelTask(BaseModel):
 @app.post("/del")
 def del_task(task_param:DelTask, current_user: dict = Depends(security.get_current_user)):
     if task_param.task_name == ".":
-        database.delete_task(1, all=True, user_id=current_user["id"])
+        database.delete_task(task_id=1, all=True, user_id=current_user["id"])
         return "All tasks have been removed"
     try:
         id = int(task_param.task_name)
     except:
-        id = database.find_tasks_by_name(task_param.task_name)
+        id = database.find_tasks_by_name(user_id=current_user["id"], name=task_param.task_name)
         if len(id) > 1:
             return "More than one task was found with that name. Refer to the task by its id"
         if len(id) == 0:
             return "No task was found with that name"
         id = id[0].get("id")
-    database.delete_task(id)
+    database.delete_task(task_id=id, user_id=current_user["id"])
     return "Task removed with succes"
 
 class EditTask(BaseModel):
@@ -123,13 +124,13 @@ def edit_task(task_param:EditTask, current_user: dict = Depends(security.get_cur
     try:
         id = int(task_param.task_id)
     except:
-        tasks_founded = database.find_tasks_by_name(task_param.task_name)
+        tasks_founded = database.find_tasks_by_name(user_id=current_user["id"], name=task_param.task_name)
         if len(tasks_founded) == 0:
             return "No task was found with that name"
         elif len(tasks_founded) > 1:
             return "Various tasks where found with that name"
         id = tasks_founded[0].get("id")
-    database.edit_task(id,
+    database.edit_task(task_id=id,
                        description=task_param.description,
                        deadline=task_param.deadline,
                        priority=task_param.priority,

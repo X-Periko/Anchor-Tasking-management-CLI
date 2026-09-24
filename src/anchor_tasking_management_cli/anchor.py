@@ -19,6 +19,9 @@ def signup():
 	nick = Prompt.ask("Enter your name")
 	mail = Prompt.ask("Enter your email")
 	password = Prompt.ask("Enter your password", password=True)
+	if "@" in nick:
+		typer.echo("You can't use @ in your username")
+		return
 	USR_DATA = {
 		"nick": nick,
 		"mail": mail,
@@ -29,8 +32,10 @@ def signup():
 		"name":nick,
 		"password":password
 	})
+	if not response.ok:
+		typer.echo(response.json().get("detail"))
 	session.save_session(data=response.json())
-	typer.echo("Account created and session started")
+	typer.echo(response.json())
 
 @app.command("login")
 def	login():
@@ -40,8 +45,14 @@ def	login():
 		"name":name,
 		"password":password
 	})
-	session.save_session(data=response.json())
-	typer.echo("Login succesful")
+	if not response.ok:
+		typer.echo(response.json().get("detail"))
+		return 
+	if response.json().get("Succes"):
+		session.save_session(data=response.json())
+		typer.echo("Login succesful")
+	else:
+		typer.echo("Invalid nick or password")
 
 @app.command("logout")
 def logout():
@@ -51,8 +62,8 @@ def logout():
 def add(name:str):
 	if session_exists():
 		try:
-			description = Prompt.ask("Description", default="No description was added")
-			deadline = Prompt.ask("Deadline (YYYY-MM-DD)", default="No deadline was added")
+			description = Prompt.ask("Description", default=None)
+			deadline = Prompt.ask("Deadline (YYYY-MM-DD)", default=None)
 			priority = IntPrompt.ask("Priority", default=1)
 			response = requests.post(SERVER_URL + "/add", json={
 				"name":name.title(),
@@ -62,10 +73,10 @@ def add(name:str):
 			},
 			headers={"Authorization": f"Bearer {session.load_session().get("acces_token")}"})
 			typer.echo(response.json())
-		except ConnectionError:
+		except requests.exceptions.ConnectionError:
 			typer.echo(f"Couldn't establish connection with server")
 	else:
-		typer.echo("\n\n[!] Run anchor init to complete your authentication before using the system")
+		typer.echo("\n\n[!] Run anchor signup/login to complete your authentication before using the system")
 
 @app.command("list")
 def list_tasks(simple:bool = False, sort:Optional[str] = False, pending:Optional[bool] = False, done:Optional[bool] = False, dynamic:Optional[bool] = False):
@@ -132,7 +143,7 @@ def list_tasks(simple:bool = False, sort:Optional[str] = False, pending:Optional
 				typer.echo("\n\nPress q to exit dynamic listing")
 				time.sleep(1)
 	else:
-		typer.echo("\n\n[!] Run anchor init to complete your authentication before using the system")
+		typer.echo("\n\n[!] Run anchor signup/login to complete your authentication before using the system")
 
 @app.command("rm")
 def delete(task_name):
@@ -147,13 +158,13 @@ def delete(task_name):
 		except Exception as e:
 			typer.echo(e)
 	else:
-		typer.echo("\n\n[!] Run anchor init to complete your authentication before using the system")
+		typer.echo("\n\n[!] Run anchor signup/login to complete your authentication before using the system")
 
 @app.command("check")
-def check_task(task, uncheck:Optional[bool] = False, rm:Optional[bool] = False):
+def check_task(task, uncheck:Optional[bool] = False):
 	if session_exists():
 		try:
-			response = requests.post(SERVER_URL+"/check", json={"task_id":str(task),"uncheck":uncheck, "rm":rm}, headers={"Authorization": f"Bearer {session.load_session().get("acces_token")}"})
+			response = requests.post(SERVER_URL+"/check", json={"task_id":str(task),"uncheck":uncheck}, headers={"Authorization": f"Bearer {session.load_session().get("acces_token")}"})
 			typer.echo(response.json())
 		except requests.exceptions.ConnectionError:
 			typer.echo("Couldn't establish connection with server")
@@ -162,7 +173,7 @@ def check_task(task, uncheck:Optional[bool] = False, rm:Optional[bool] = False):
 		except Exception as e:
 			typer.echo(e)
 	else:
-		typer.echo("\n\n[!] Run anchor init to complete your authentication before using the system")
+		typer.echo("\n\n[!] Run anchor signup/login to complete your authentication before using the system")
 
 def progress_bar(done: int, total: int, width: int = 20) -> str:
     if total == 0:
@@ -197,7 +208,7 @@ def status():
 		except Exception as e:
 			typer.echo(e)
 	else:
-		typer.echo("\n\n[!] Run anchor init to complete your authentication before using the system")
+		typer.echo("\n\n[!] Run anchor signup/login to complete your authentication before using the system")
 
 @app.command("edit")
 def edit_task(task_name):
@@ -205,6 +216,7 @@ def edit_task(task_name):
 		try:
 			response = requests.get(SERVER_URL+"/list", headers={"Authorization": f"Bearer {session.load_session().get("acces_token")}"})
 			task_list = response.json()
+			current = None
 			for t in task_list:
 				if t.get("name").lower() == task_name.lower():
 					current = t
@@ -222,6 +234,8 @@ def edit_task(task_name):
 					},
 					headers={"Authorization": f"Bearer {session.load_session().get("acces_token")}"})
 					typer.echo(response.json())
+			else:
+				typer.echo("No task was found with that name")
 		except requests.exceptions.ConnectionError:
 			typer.echo("Couldn't establish connection with server")
 		except requests.exceptions.HTTPError as e:
@@ -229,7 +243,7 @@ def edit_task(task_name):
 		except Exception as e:
 			typer.echo(e)
 	else:
-		typer.echo("\n\n[!] Run anchor init to complete your authentication before using the system")
+		typer.echo("\n\n[!] Run anchor signup/login to complete your authentication before using the system")
 
 if __name__ == "__main__":
 	app()

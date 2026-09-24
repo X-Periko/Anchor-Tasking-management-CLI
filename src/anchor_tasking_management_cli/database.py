@@ -110,11 +110,11 @@ def delete_task(user_id, task_id, all:bool = False):
             return
         conn.execute("DELETE FROM tasks WHERE id = ? AND user_id = ?", (task_id,user_id))
 
-def find_tasks_by_name(name):
+def find_tasks_by_name(user_id, name):
     with connect() as conn:
         rows = conn.execute(
-            "SELECT * FROM tasks WHERE name LIKE ?",
-            (name,)
+            "SELECT * FROM tasks WHERE name LIKE ? AND user_id = ? COLLATE NOCASE",
+            (name,user_id)
         ).fetchall()
         return [dict(r) for r in rows]
 
