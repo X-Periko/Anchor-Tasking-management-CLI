@@ -65,8 +65,8 @@ def add(task_param:AddTask, current_user: dict = Depends(security.get_current_us
     return "Task created succesfully"
 
 @app.get("/list")
-def list_tasks():
-    task_list = database.list_tasks(user_id="placeholder")
+def list_tasks(current_user: dict = Depends(security.get_current_user)):
+    task_list = database.list_tasks(user_id=current_user["id"])
     return task_list
 
 class CheckTask(BaseModel):
@@ -78,6 +78,8 @@ class CheckTask(BaseModel):
 def check_task(task_param:CheckTask, current_user: dict = Depends(security.get_current_user)):
     try:
         id = int(task_param.task_id)
+        if database.get_task(user_id=current_user["id"], task_id=id) is None:
+            return "No task was found with that name"
     except:
         tasks_founded = database.find_tasks_by_name(task_param.task_id)
         if len(tasks_founded) == 0:

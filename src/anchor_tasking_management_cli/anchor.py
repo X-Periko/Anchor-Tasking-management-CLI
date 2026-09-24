@@ -11,7 +11,8 @@ app = typer.Typer()
 SERVER_URL = "http://localhost:8000"
 
 def session_exists() -> bool:
-	return session.load_session() is not None
+      session_data = session.load_session()
+      return isinstance(session_data, dict) and "acces_token" in session_data
 
 @app.command("signup")
 def signup():
@@ -24,7 +25,12 @@ def signup():
 		"password": password
 	}
 	response = requests.post(SERVER_URL + "/signup", json=USR_DATA)
-	typer.echo(response.json())
+	response = requests.post(SERVER_URL + "/login", json={
+		"name":nick,
+		"password":password
+	})
+	session.save_session(data=response.json())
+	typer.echo("Account created and session started")
 
 @app.command("login")
 def	login():
@@ -73,6 +79,9 @@ def list_tasks(simple:bool = False, sort:Optional[str] = False, pending:Optional
 			try:
 				response = requests.get(SERVER_URL+"/list", headers={"Authorization": f"Bearer {session.load_session().get("acces_token")}"})
 				response_list = response.json()
+				response.raise_for_status()
+				if not isinstance(response_list, list):
+					typer.echo(f"Error del servidor {response_list}")
 				if sort == "priority":
 					new_list = []
 					prior_list = []

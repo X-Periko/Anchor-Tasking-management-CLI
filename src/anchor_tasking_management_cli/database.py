@@ -73,41 +73,42 @@ def get_user_by_id(user_id):
 def add_task(name, user_id, description=None, deadline=None, priority=1):
     with connect() as conn:
         cursor = conn.execute(
-            "INSERT INTO tasks (name, description, deadline, priority) VALUES (?, ?, ?, ?)",
-            (name, description, deadline, priority)
+            "INSERT INTO tasks (user_id, name, description, deadline, priority) VALUES (?, ?, ?, ?, ?)",
+            (user_id, name, description, deadline, priority)
         )
         return cursor.lastrowid
 
 
 def list_tasks(user_id):
     with connect() as conn:
-        rows = conn.execute("SELECT * FROM tasks").fetchall()
+        rows = conn.execute("SELECT * FROM tasks WHERE user_id = ?", (user_id,)).fetchall()
         return [dict(r) for r in rows]
 
 
 def get_task(user_id, task_id):
     with connect() as conn:
-        row = conn.execute("SELECT * FROM tasks WHERE id = ?", (task_id,)).fetchone()
+        row = conn.execute("SELECT * FROM tasks WHERE id = ? AND user_id = ?", (task_id,user_id)).fetchone()
         return dict(row) if row else None
 
 
 def set_done(user_id, task_id, done: bool):
     with connect() as conn:
-        conn.execute("UPDATE tasks SET done = ? WHERE id = ?", (int(done), task_id))
+        conn.execute("UPDATE tasks SET done = ? WHERE id = ? AND user_id = ?", (int(done), task_id, user_id))
 
 
 def edit_task(user_id, task_id, description, deadline, priority):
     with connect() as conn:
         conn.execute(
-            "UPDATE tasks SET description = ?, deadline = ?, priority = ? WHERE id = ?",
-            (description, deadline, priority, task_id)
+            "UPDATE tasks SET description = ?, deadline = ?, priority = ? WHERE id = ? AND user_id = ?",
+            (description, deadline, priority, task_id, user_id)
         )
 
 def delete_task(user_id, task_id, all:bool = False):
     with connect() as conn:
         if all: 
-            conn.execute("DELETE FROM tasks")
-        conn.execute("DELETE FROM tasks WHERE id = ?", (task_id,))
+            conn.execute("DELETE FROM tasks WHERE user_id = ?", (user_id,))
+            return
+        conn.execute("DELETE FROM tasks WHERE id = ? AND user_id = ?", (task_id,user_id))
 
 def find_tasks_by_name(name):
     with connect() as conn:
